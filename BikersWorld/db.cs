@@ -7,22 +7,35 @@ using MySql.Data.MySqlClient;
 using System.Windows.Forms;
 using System.Security.Cryptography;
 
+#region toDO
+        //instantiate and load forms for sales and tech when
+        //added to project        
+#endregion
+
+
 
 namespace BikersWorld
 {
+
     public class db
     {
+        //db connection variables
         private MySqlConnection connection;
         private string server;
         private string database;
         private string uid;
         private string password;
+        private int employeeID;
+        private int employeeType;
 
+
+        // default constructor
         public db() {
             Initialize();
 
         }
 
+        //build connection to db
         private void Initialize()
         {
             server = "localhost";
@@ -36,7 +49,7 @@ namespace BikersWorld
         }
 
 
-
+        //open connection to db
         private bool openConnection()
         {
             try
@@ -59,7 +72,7 @@ namespace BikersWorld
             }
         }
 
-
+        // close connection to db
         private bool closeConnection()
         {
             try  {
@@ -74,66 +87,95 @@ namespace BikersWorld
 
         }
 
-
-        private List<String>[] login (string username, string password)
+        //query db to see if entered credentials exist within db
+        private void login (string username, string password)
         {
             string hashedPassword = getMD5Hash(password);
-
-            
+                       
             string query = "SELECT * FROM login WHERE (username = '" + username + "' AND password = '" + hashedPassword + "');";
-            
-
-            List<string>[] list = new List<string>[3];
-            list[0] = new List<string>();
-            list[1] = new List<string>();
-            list[2] = new List<string>();
-
+  
             if (this.openConnection() == true)
             {
                 MySqlCommand cmd = new MySqlCommand(query, connection);
                 MySqlDataReader dataReader = cmd.ExecuteReader();
 
+                int count = 0;
                 while (dataReader.Read())
                 {
-                    list[0].Add(dataReader["login_id"] + "");
-                    list[1].Add(dataReader["username"] + "");
-                    list[2].Add(dataReader["password"] + "");
+                    count++;
+                    employeeID = Convert.ToInt16(dataReader["employee_id"]);
                 }
 
                 dataReader.Close();
                 this.closeConnection();
-                return list;
+                if (count == 1)
+                {
 
+                    string getEmployeeType = "SELECT * FROM employee WHERE employee_id = " + employeeID + "; ";
+                    if (this.openConnection() == true)
+                    {
+                        MySqlCommand cmd2 = new MySqlCommand(getEmployeeType, connection);
+                        MySqlDataReader myReader = cmd2.ExecuteReader();
+                        while (myReader.Read())
+                        {
+                            employeeType = Convert.ToInt16(myReader["job_role_id"]);
+                        }
 
+                        myReader.Close();
+                        this.closeConnection();
+
+                        switch (employeeType)
+                        {
+                            case 1:
+                                //instantiaites management form when management login credentials are verified. 
+                                frmManagement formManager = new frmManagement();
+                                formManager.ShowDialog();
+                                break;
+                            case 2:
+                                //instantiate technician form
+                                break;
+                            default:
+                                //instantiate sales form
+                                break;
+                        }
+
+                    }
+                    else //display error message if 
+                    {
+                        MessageBox.Show("Oops! Something went wrong, please try again");
+                        reloadLogin();
+
+                    }
+
+                }
+                else if (count > 1)
+                {
+                    MessageBox.Show("Your login credentials are duplicated on the System. Please contact your network administrator!");
+                    reloadLogin();
+                }
+                else
+                {
+                    MessageBox.Show("Invalid login credentials, please try again");
+                    reloadLogin();
+                }
+                
             }
-            else {
-                return list;
-
-            }
-
-
-        }
-
-        public bool authenticate(string username, string password)
-        {
-            List<String>[] users = new List<string>[3];
-            users = login(username, password);
-
-            if (users.Any())
+            else //display messagebox error unable to connected to database and then reload login form
             {
-                MessageBox.Show("Authenicated");
+                
+                MessageBox.Show("Please contact your network administrator. Unable to connect to database system!");
+                reloadLogin();
             }
-
-            return true;
-
 
         }
 
+        //Authenticate users login credentials
+        public void authenticate(string username, string password)
+        {
+            
+            login(username, password);
 
-    
-
-     
-
+        }
 
         // take a string value and return it as a MD5 hashed string
         private string getMD5Hash(string strPassword) {
@@ -146,11 +188,12 @@ namespace BikersWorld
 
         }
 
-
-
-
-
-
+        //method used to reload login form
+        private void reloadLogin()
+        {
+            frmLogin loginAgain = new frmLogin();
+            loginAgain.ShowDialog();
+        }
 
     }
 }
